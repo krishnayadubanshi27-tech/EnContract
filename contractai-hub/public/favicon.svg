@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e2235" />
+      <stop offset="100%" stop-color="#161a2b" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34d399" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
+  <g transform="translate(16,14)">
+    <path d="M4 2h20a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H9l-5 5V4a2 2 0 0 1 2-2Z" fill="url(#accent)" opacity="0.15" stroke="url(#accent)" stroke-width="2" stroke-linejoin="round" />
+    <path d="M8 14l5 5 10-11" fill="none" stroke="url(#accent)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="32" y="56" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif" font-size="11" font-weight="700" fill="#34d399" letter-spacing="0.5">EC</text>
+</svg>

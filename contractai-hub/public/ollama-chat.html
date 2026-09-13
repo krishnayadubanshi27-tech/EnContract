@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ollama AI Chat — phi4-mini</title>
+    <!-- Google Fonts & Lucide Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+      :root {
+        --bg-primary: #0f172a;
+        --bg-secondary: #1e293b;
+        --bg-tertiary: #334155;
+        --bg-chat: #090d16;
+        --user-bubble: #2563eb;
+        --user-bubble-hover: #1d4ed8;
+        --ai-bubble: #1e293b;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        --accent: #38bdf8;
+        --accent-rgb: 56, 189, 248;
+        --border-color: rgba(255, 255, 255, 0.08);
+        --border-hover: rgba(255, 255, 255, 0.16);
+        --error-bg: rgba(239, 68, 68, 0.12);
+        --error-border: rgba(239, 68, 68, 0.35);
+        --error-text: #f87171;
+        --success-text: #34d399;
+        --font-main:
+          "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --font-mono: "JetBrains Mono", monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-main);
+        background-color: var(--bg-chat);
+        color: var(--text-primary);
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Top Navbar */
+      header {
+        background: var(--bg-primary);
+        border-bottom: 1px solid var(--border-color);
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 20;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .brand-icon {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #38bdf8, #2563eb);
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-weight: 700;
+        font-size: 18px;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      }
+
+      .brand-text h1 {
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .brand-text p {
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      .header-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 9999px;
+        font-size: 12px;
+        font-weight: 500;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #fbbf24;
+      }
+
+      .status-dot.online {
+        background: var(--success-text);
+        box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+      }
+
+      .status-dot.offline {
+        background: var(--error-text);
+      }
+
+      .btn-clear {
+        background: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s;
+        font-family: inherit;
+      }
+
+      .btn-clear:hover {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        border-color: var(--border-hover);
+      }
+
+      /* Main Chat Layout */
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        max-width: 900px;
+        width: 100%;
+        margin: 0 auto;
+        height: calc(100vh - 61px);
+        position: relative;
+      }
+
+      #chat-history {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px 16px 140px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        scroll-behavior: smooth;
+      }
+
+      /* Scrollbar */
+      #chat-history::-webkit-scrollbar {
+        width: 6px;
+      }
+      #chat-history::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      #chat-history::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+      }
+
+      /* Welcome Hero Screen */
+      .welcome-container {
+        margin: auto;
+        max-width: 520px;
+        text-align: center;
+        padding: 40px 20px;
+      }
+
+      .welcome-avatar {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 20px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(56, 189, 248, 0.15), rgba(37, 99, 235, 0.25));
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        display: grid;
+        place-items: center;
+        color: var(--accent);
+      }
+
+      .welcome-avatar svg {
+        width: 32px;
+        height: 32px;
+      }
+
+      .welcome-container h2 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .welcome-container p {
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.5;
+        margin-bottom: 24px;
+      }
+
+      .prompt-suggestions {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+      }
+
+      .prompt-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 13px;
+        color: var(--text-primary);
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-family: inherit;
+      }
+
+      .prompt-card:hover {
+        border-color: var(--accent);
+        background: rgba(56, 189, 248, 0.05);
+        transform: translateY(-2px);
+      }
+
+      .prompt-card span {
+        display: block;
+        color: var(--text-muted);
+        font-size: 11px;
+        margin-top: 4px;
+      }
+
+      /* Message Bubbles */
+      .message-row {
+        display: flex;
+        gap: 12px;
+        width: 100%;
+        animation: fadeIn 0.25s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .message-row.user {
+        justify-content: flex-end;
+      }
+
+      .message-row.assistant {
+        justify-content: flex-start;
+      }
+
+      .avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        flex-shrink: 0;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .avatar.user-avatar {
+        background: var(--bg-tertiary);
+        color: var(--text-secondary);
+      }
+
+      .avatar.ai-avatar {
+        background: linear-gradient(135deg, #0284c7, #2563eb);
+        color: #fff;
+      }
+
+      .bubble {
+        max-width: 82%;
+        padding: 12px 16px;
+        border-radius: 16px;
+        font-size: 14.5px;
+        line-height: 1.6;
+        word-break: break-word;
+        position: relative;
+      }
+
+      .message-row.user .bubble {
+        background-color: var(--user-bubble);
+        color: #ffffff;
+        border-bottom-right-radius: 4px;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+      }
+
+      .message-row.assistant .bubble {
+        background-color: var(--ai-bubble);
+        color: var(--text-primary);
+        border: 1px solid var(--border-color);
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+      }
+
+      /* Markdown inside AI response */
+      .bubble p {
+        margin-bottom: 8px;
+      }
+      .bubble p:last-child {
+        margin-bottom: 0;
+      }
+      .bubble ul,
+      .bubble ol {
+        margin-left: 20px;
+        margin-bottom: 8px;
+      }
+      .bubble li {
+        margin-bottom: 4px;
+      }
+      .bubble strong {
+        font-weight: 600;
+        color: #fff;
+      }
+      .bubble code {
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        background: rgba(0, 0, 0, 0.35);
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .bubble pre {
+        background: #0b0f19;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 12px;
+        margin: 8px 0;
+        overflow-x: auto;
+      }
+      .bubble pre code {
+        background: transparent;
+        padding: 0;
+        border: none;
+      }
+
+      /* Typing Cursor */
+      .typing-cursor {
+        display: inline-block;
+        width: 8px;
+        height: 15px;
+        background-color: var(--accent);
+        margin-left: 4px;
+        vertical-align: middle;
+        border-radius: 1px;
+        animation: blink 0.8s infinite;
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+
+      /* Error Bubble */
+      .error-card {
+        background: var(--error-bg);
+        border: 1px solid var(--error-border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        color: var(--error-text);
+        font-size: 13px;
+        max-width: 100%;
+        margin-top: 4px;
+        line-height: 1.5;
+      }
+
+      .error-card strong {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 14px;
+      }
+
+      .error-card pre {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        margin-top: 8px;
+        color: #fecaca;
+        overflow-x: auto;
+        user-select: all;
+      }
+
+      /* Bottom Fixed Input Area */
+      .input-wrapper {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 16px;
+        background: linear-gradient(to top, var(--bg-chat) 75%, transparent);
+        z-index: 10;
+      }
+
+      .input-box {
+        max-width: 840px;
+        margin: 0 auto;
+        background: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
+        padding: 10px 14px;
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
+      }
+
+      .input-box:focus-within {
+        border-color: var(--accent);
+        box-shadow: 0 8px 30px rgba(56, 189, 248, 0.15);
+      }
+
+      textarea {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--text-primary);
+        font-family: inherit;
+        font-size: 14.5px;
+        resize: none;
+        max-height: 180px;
+        min-height: 24px;
+        line-height: 1.4;
+        padding: 4px 0;
+      }
+
+      textarea::placeholder {
+        color: var(--text-muted);
+      }
+
+      .action-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+      }
+
+      .send-btn {
+        background: var(--accent);
+        color: #0f172a;
+      }
+
+      .send-btn:hover:not(:disabled) {
+        background: #7dd3fc;
+        transform: scale(1.04);
+      }
+
+      .send-btn:disabled {
+        background: var(--bg-tertiary);
+        color: var(--text-muted);
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      .stop-btn {
+        background: #ef4444;
+        color: white;
+      }
+
+      .stop-btn:hover {
+        background: #dc2626;
+      }
+
+      .input-footer {
+        max-width: 840px;
+        margin: 8px auto 0;
+        text-align: center;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      /* Responsive */
+      @media (max-width: 640px) {
+        header {
+          padding: 10px 14px;
+        }
+        #chat-history {
+          padding: 14px 10px 120px;
+        }
+        .bubble {
+          max-width: 90%;
+        }
+        .input-wrapper {
+          padding: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <header>
+      <a href="#" class="brand" onclick="startNewChat(event)">
+        <div class="brand-icon">𝜙</div>
+        <div class="brand-text">
+          <h1>Ollama Chat</h1>
+          <p>Local AI Model: <strong>phi4-mini</strong></p>
+        </div>
+      </a>
+      <div class="header-controls">
+        <div class="status-badge" id="status-badge">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-text">Checking…</span>
+        </div>
+        <button class="btn-clear" onclick="startNewChat()">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+            ></path>
+          </svg>
+          New Chat
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main>
+      <div id="chat-history">
+        <!-- Default Welcome State -->
+        <div class="welcome-container" id="welcome-view">
+          <div class="welcome-avatar">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12A10 10 0 0 1 12 2z"
+              ></path>
+              <path d="M12 8v4"></path>
+              <path d="m9 15 3 3 3-3"></path>
+            </svg>
+          </div>
+          <h2>What would you like to explore?</h2>
+          <p>
+            Chat directly with your local <strong>phi4-mini</strong> model running in real-time via
+            the Ollama Streaming API.
+          </p>
+
+          <div class="prompt-suggestions">
+            <button
+              class="prompt-card"
+              onclick="selectSuggestion('Explain quantum computing in 3 simple bullet points.')"
+            >
+              Explain quantum computing
+              <span>3 simple bullet points</span>
+            </button>
+            <button
+              class="prompt-card"
+              onclick="
+                selectSuggestion(
+                  'Write a clean TypeScript function that checks if a string is a palindrome.',
+                )
+              "
+            >
+              TypeScript Palindrome function
+              <span>Code snippet & explanation</span>
+            </button>
+            <button
+              class="prompt-card"
+              onclick="
+                selectSuggestion(
+                  'What are the key differences between an NDA and a non-compete agreement?',
+                )
+              "
+            >
+              NDA vs Non-Compete
+              <span>Legal breakdown</span>
+            </button>
+            <button
+              class="prompt-card"
+              onclick="
+                selectSuggestion(
+                  'Draft a professional email asking for a contract deadline extension.',
+                )
+              "
+            >
+              Contract deadline extension
+              <span>Professional email draft</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Input -->
+      <div class="input-wrapper">
+        <div class="input-box">
+          <textarea
+            id="user-input"
+            placeholder="Message phi4-mini… (Press Enter to send, Shift+Enter for new line)"
+            rows="1"
+            autocomplete="off"
+          ></textarea>
+          <button
+            id="action-btn"
+            class="action-btn send-btn"
+            onclick="handleSend()"
+            title="Send message"
+            disabled
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+        <div class="input-footer">
+          Ollama Endpoint: <code>http://localhost:11434/api/generate</code> · Model:
+          <strong>phi4-mini</strong>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      // Configuration
+      const OLLAMA_HOST = "http://localhost:11434";
+      const MODEL_NAME = "phi4-mini";
+
+      const chatHistory = document.getElementById("chat-history");
+      const userInput = document.getElementById("user-input");
+      const actionBtn = document.getElementById("action-btn");
+      const welcomeView = document.getElementById("welcome-view");
+      const statusDot = document.getElementById("status-dot");
+      const statusText = document.getElementById("status-text");
+
+      let isGenerating = false;
+      let abortController = null;
+
+      // Check Ollama connectivity on startup
+      async function checkOllamaHealth() {
+        try {
+          const res = await fetch(`${OLLAMA_HOST}/api/tags`, { method: "GET" });
+          if (res.ok) {
+            const data = await res.json();
+            const models = data.models || [];
+            const hasModel = models.some(
+              (m) => m.name.includes("phi4-mini") || m.name.includes("phi4"),
+            );
+
+            statusDot.className = "status-dot online";
+            statusText.textContent = hasModel ? "phi4-mini ready" : `${models.length} models ready`;
+          } else {
+            setOfflineStatus();
+          }
+        } catch (err) {
+          setOfflineStatus();
+        }
+      }
+
+      function setOfflineStatus() {
+        statusDot.className = "status-dot offline";
+        statusText.textContent = "Ollama offline / CORS";
+      }
+
+      // Auto-resize textarea
+      userInput.addEventListener("input", () => {
+        userInput.style.height = "auto";
+        userInput.style.height = Math.min(userInput.scrollHeight, 180) + "px";
+        actionBtn.disabled = !userInput.value.trim() && !isGenerating;
+      });
+
+      // Enter key handling
+      userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          if (!isGenerating && userInput.value.trim()) {
+            handleSend();
+          }
+        }
+      });
+
+      function selectSuggestion(text) {
+        userInput.value = text;
+        userInput.dispatchEvent(new Event("input"));
+        handleSend();
+      }
+
+      function scrollToBottom() {
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+      }
+
+      function startNewChat(e) {
+        if (e) e.preventDefault();
+        if (isGenerating && abortController) {
+          abortController.abort();
+        }
+        chatHistory.innerHTML = "";
+        if (welcomeView) chatHistory.appendChild(welcomeView);
+        userInput.value = "";
+        userInput.style.height = "auto";
+        setGeneratingState(false);
+        userInput.focus();
+      }
+
+      function appendUserMessage(text) {
+        if (welcomeView && welcomeView.parentNode === chatHistory) {
+          chatHistory.removeChild(welcomeView);
+        }
+
+        const row = document.createElement("div");
+        row.className = "message-row user";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = text;
+
+        row.appendChild(bubble);
+        chatHistory.appendChild(row);
+        scrollToBottom();
+      }
+
+      function createAssistantBubble() {
+        const row = document.createElement("div");
+        row.className = "message-row assistant";
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar ai-avatar";
+        avatar.textContent = "𝜙";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+
+        const contentSpan = document.createElement("div");
+        contentSpan.className = "bubble-content";
+
+        const cursor = document.createElement("span");
+        cursor.className = "typing-cursor";
+
+        bubble.appendChild(contentSpan);
+        bubble.appendChild(cursor);
+        row.appendChild(avatar);
+        row.appendChild(bubble);
+
+        chatHistory.appendChild(row);
+        scrollToBottom();
+
+        return { row, bubble, contentSpan, cursor };
+      }
+
+      function renderErrorMessage(errDetails) {
+        const row = document.createElement("div");
+        row.className = "message-row assistant";
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar ai-avatar";
+        avatar.style.background = "#ef4444";
+        avatar.textContent = "!";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.style.borderColor = "var(--error-border)";
+
+        const errorCard = document.createElement("div");
+        errorCard.className = "error-card";
+        errorCard.innerHTML = `
+        <strong>⚠️ Connection failed</strong>
+        <p>Please ensure Ollama is running and CORS is enabled by starting it with:</p>
+        <pre>set OLLAMA_ORIGINS="*" && ollama run phi4-mini</pre>
+        <p style="margin-top: 6px; font-size: 11px; opacity: 0.8;">Or on PowerShell:</p>
+        <pre>$env:OLLAMA_ORIGINS="*" ; ollama run phi4-mini</pre>
+      `;
+
+        bubble.appendChild(errorCard);
+        row.appendChild(avatar);
+        row.appendChild(bubble);
+        chatHistory.appendChild(row);
+        scrollToBottom();
+      }
+
+      function setGeneratingState(generating) {
+        isGenerating = generating;
+        if (generating) {
+          actionBtn.className = "action-btn stop-btn";
+          actionBtn.title = "Stop generating";
+          actionBtn.disabled = false;
+          actionBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+          </svg>
+        `;
+        } else {
+          actionBtn.className = "action-btn send-btn";
+          actionBtn.title = "Send message";
+          actionBtn.disabled = !userInput.value.trim();
+          actionBtn.innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        `;
+        }
+      }
+
+      async function handleSend() {
+        if (isGenerating) {
+          if (abortController) abortController.abort();
+          setGeneratingState(false);
+          return;
+        }
+
+        const prompt = userInput.value.trim();
+        if (!prompt) return;
+
+        appendUserMessage(prompt);
+        userInput.value = "";
+        userInput.style.height = "auto";
+        setGeneratingState(true);
+
+        const { contentSpan, cursor } = createAssistantBubble();
+        let fullResponse = "";
+
+        abortController = new AbortController();
+
+        try {
+          const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: MODEL_NAME,
+              prompt: prompt,
+              stream: true,
+            }),
+            signal: abortController.signal,
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder("utf-8");
+          let buffer = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || ""; // keep remaining partial line in buffer
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed) continue;
+
+              try {
+                const parsed = JSON.parse(trimmed);
+                if (parsed.response) {
+                  fullResponse += parsed.response;
+                  // Render markdown if marked is loaded, else plain text
+                  if (window.marked) {
+                    contentSpan.innerHTML = marked.parse(fullResponse);
+                  } else {
+                    contentSpan.textContent = fullResponse;
+                  }
+                  scrollToBottom();
+                }
+                if (parsed.done) {
+                  break;
+                }
+              } catch (jsonErr) {
+                console.warn("Failed to parse NDJSON chunk:", trimmed, jsonErr);
+              }
+            }
+          }
+
+          // Remove typing cursor when done
+          if (cursor && cursor.parentNode) {
+            cursor.parentNode.removeChild(cursor);
+          }
+          statusDot.className = "status-dot online";
+          statusText.textContent = "phi4-mini ready";
+        } catch (err) {
+          if (err.name === "AbortError") {
+            if (cursor && cursor.parentNode) cursor.parentNode.removeChild(cursor);
+            contentSpan.innerHTML +=
+              '<p style="color: var(--text-muted); font-size: 12px; margin-top: 6px;"><em>(Generation stopped)</em></p>';
+          } else {
+            console.error("Ollama connection error:", err);
+            if (cursor && cursor.parentNode) cursor.parentNode.removeChild(cursor);
+            renderErrorMessage(err);
+            setOfflineStatus();
+          }
+        } finally {
+          setGeneratingState(false);
+          abortController = null;
+          userInput.focus();
+        }
+      }
+
+      // Initialize
+      checkOllamaHealth();
+    </script>
+  </body>
+</html>
